@@ -2,65 +2,56 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use elf::{endian::AnyEndian, section::SectionHeader, ElfBytes};
 use hmac::{Hmac, Mac};
+use object::{Object, ObjectSection};
 use sha2::{Digest, Sha256};
 use std::error::Error;
+use std::fmt::format;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::process::exit;
 use std::str::FromStr;
 
-fn write_file(filename: &str, buffer: &[u8]) {
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(filename)
-        .unwrap_or_else(|e| {
-            println!("{}", e);
-            exit(1);
-        });
-
-    file.write_all(buffer).unwrap();
+#[derive(Parser)]
+struct Cli {
+    input_file: std::path::PathBuf,
+    output_file: std::path::PathBuf,
 }
 
-fn parse_cli() -> String {
-    let Some(in_file) = std::env::args().skip(1).next() else {
-        println!("Missing Filename!");
-        exit(1);
-    };
-    in_file
+// TODO(Roulette): Rename PType enum
+#[derive(Debug, Clone, Copy)]
+enum PType {
+    Fake = 0x1,
+    NpdrmExec = 0x4,
+    NpdrmDynlib = 0x5,
+    SystemExec = 0x8,
+    SystemDynlib = 0x9, // including Mono binaries
+    HostKernel = 0xC,
+    SecureModule = 0xE,
+    SecureKernel = 0xF,
 }
+
+struct signed_elf_entry {}
 
 // $ cargo run gta-5.prx gta-5.sprx
 fn main() -> Result<()> {
-    let filename = parse_cli();
-    let contents: Vec<u8> = std::fs::read(&filename).unwrap_or_else(|e| {
-        println!("{}", e);
-        std::process::exit(1);
-    });
+    let args = Cli::parse();
 
-    let file = ElfBytes::<AnyEndian>::minimal_parse(&contents[..]).unwrap_or_else(|e| {
-        println!("{}", e);
-        exit(1);
-    });
+    let input_file_data = std::fs::read(&args.input_file)
+        .with_context(|| format!("could not read file `{:?}`", args.input_file))?;
 
-    let thing: SectionHeader = file
-        .section_header_by_name(".sce_module_param")
-        .expect("section table should be parsable")
-        .expect("file should have a .sce_module_param section");
+    let input_data_raw = input_file_data.as_slice();
 
-    println!("{:#?}", thing);
+    let elf_bytes = ElfBytes::<AnyEndian>::minimal_parse(input_data_raw)?;
 
-    println!("{:#?}", file.ehdr);
+    let obj_file = object::File::parse(input_data_raw)?;
 
-    let new_header: Vec<u8> = vec![0; 100];
-    write_file(
-        &filename.replace(".prx", ".sprx"),
-        &new_header
-            .into_iter()
-            .chain(contents.into_iter())
-            .collect::<Vec<u8>>(),
-    );
+    // TODO(Roulette): move these values to Cli parser
+    let paid: i64 = 0x3100000000000002;
+    let ptype = PType::Fake;
+    let app_version = 0;
+    let fw_version = 0;
+    let auth_info = 0;
 
     Ok(())
 }
