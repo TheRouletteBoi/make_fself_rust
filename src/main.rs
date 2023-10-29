@@ -84,11 +84,12 @@ impl SignedElfEntry {
             index,
             props: 0,
             offset: 0,
+            filesz: 0,
             memsz: 0,
             data: Box::new([]),
             encrypted: false,
             signed: false,
-            has_digest: false,
+            has_digests: false,
             has_blocks: false,
             block_size: 0,
             segment_index: 0,
@@ -120,7 +121,7 @@ impl SignedElfEntry {
     }
 
     fn has_digest(&mut self, value: bool) {
-        self.has_digest = value;
+        self.has_digests = value;
 
         self.props &= !(signed_elf_entry::PROPS_HAS_DIGESTS_MASK
             << signed_elf_entry::PROPS_HAS_DIGESTS_SHIFT);
@@ -309,8 +310,6 @@ fn sign_elf_file(
 
         entry_idx += 2;
     }
-
-    let mut common_header_pack = vec![];
 
     Ok(())
 }
