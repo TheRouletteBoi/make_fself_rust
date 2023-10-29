@@ -120,7 +120,7 @@ impl SignedElfEntry {
         }
     }
 
-    fn has_digest(&mut self, value: bool) {
+    fn has_digests(&mut self, value: bool) {
         self.has_digests = value;
 
         self.props &= !(signed_elf_entry::PROPS_HAS_DIGESTS_MASK
@@ -228,7 +228,7 @@ fn sign_elf_file(
 
         meta_entry.encrypted(false);
         meta_entry.signed(true);
-        meta_entry.has_digest(true);
+        meta_entry.has_digests(true);
         meta_entry.segment_index(entry_idx + 1);
         entries.push(meta_entry);
 
@@ -642,7 +642,7 @@ fn main() -> Result<()> {
         _ => ProgramType::Fake,
     };
 
-    let app_verision: i128 = args
+    let app_version: i128 = args
         .app_version
         .unwrap_or("0".to_string())
         .parse::<i128>()
@@ -660,11 +660,12 @@ fn main() -> Result<()> {
         .with_context(|| format!("could not read file `{:?}`", args.input_file))
         .unwrap();
 
-    let file_bytes = input_file_data.as_slice();
-    let elf_file: ElfBytes<AnyEndian> = ElfBytes::<AnyEndian>::minimal_parse(file_bytes).unwrap();
+    let input_data_raw = input_file_data.as_slice();
+    let elf_file: ElfBytes<AnyEndian> =
+        ElfBytes::<AnyEndian>::minimal_parse(input_data_raw).unwrap();
 
     let mut hasher = Sha256::new();
-    hasher.update(file_bytes);
+    hasher.update(input_data_raw);
     let digest: [u8; 32] = hasher.finalize().into();
 
     let output_file = File::create(&args.output_file)?;
@@ -674,7 +675,7 @@ fn main() -> Result<()> {
         output_file,
         paid,
         program_type,
-        app_verision,
+        app_version,
         fw_version,
         digest,
         auth_info,
