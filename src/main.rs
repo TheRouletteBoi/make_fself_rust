@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use byteorder::{LittleEndian, WriteBytesExt};
 use clap::Parser;
 use elf::{endian::AnyEndian, ElfBytes};
-use hmac::digest::{KeyInit, OutputSizeUser};
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Write;

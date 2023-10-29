@@ -9,7 +9,5 @@ edition = "2021"
 elf = "0.7.3"
 clap = { version = "4.4.6", features = ["derive"] }
 sha2 = "0.10"
-hmac = "0.12.1"
 anyhow = "1.0"
-object = "0.32.1"
 byteorder = "1.5.0"
