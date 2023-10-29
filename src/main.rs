@@ -225,7 +225,6 @@ fn sign_elf_file(
         }
 
         let mut meta_entry = SignedElfEntry::new(entry_idx);
-
         meta_entry.encrypted(false);
         meta_entry.signed(true);
         meta_entry.has_digests(true);
@@ -233,7 +232,6 @@ fn sign_elf_file(
         entries.push(meta_entry);
 
         let mut data_entry = SignedElfEntry::new(entry_idx + 1);
-
         data_entry.encrypted(false);
         data_entry.signed(true);
         data_entry.has_blocks(true);
