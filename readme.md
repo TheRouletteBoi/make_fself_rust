@@ -20,8 +20,24 @@ Options:
   -h, --help  Print help
 ```
 
+### Example usage
+```bash
+$ ./make_fself name.prx name.sprx
+```
+
+
+### Example usage in Visual Studio Project on Post-Build Event
+```
+cd "$(SolutionDir)vendor\make_fself\bin\"
+make_fself.exe "$(TargetDir)$(TargetName)$(TargetExt)" "$(TargetDir)$(TargetName).sprx"
+```
+
+
 # Building
 
 ```bash
 $ cargo build --release
 ```
+
+
+
