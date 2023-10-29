@@ -637,7 +637,7 @@ fn main() -> Result<()> {
         0x8 => ProgramType::SystemExec,
         0x9 => ProgramType::SystemDynlib,
         0xC => ProgramType::HostKernel,
-        0xE => ProgramType::SecureKernel,
+        0xE => ProgramType::SecureModule,
         0xF => ProgramType::SecureKernel,
         _ => ProgramType::Fake,
     };
