@@ -137,6 +137,7 @@ impl SignedElfEntry {
 
         self.props &= !(signed_elf_entry::PROPS_SEGMENT_INDEX_MASK
             << signed_elf_entry::PROPS_SEGMENT_INDEX_SHIFT);
+
         self.props |= (value as i128 & signed_elf_entry::PROPS_SEGMENT_INDEX_MASK)
             << signed_elf_entry::PROPS_SEGMENT_INDEX_SHIFT;
     }
@@ -146,6 +147,7 @@ impl SignedElfEntry {
 
         self.props &=
             !(signed_elf_entry::PROPS_HAS_BLOCKS_MASK << signed_elf_entry::PROPS_HAS_BLOCKS_SHIFT);
+
         if value {
             self.props |=
                 signed_elf_entry::PROPS_HAS_BLOCKS_MASK << signed_elf_entry::PROPS_HAS_BLOCKS_SHIFT;
@@ -658,11 +660,11 @@ fn main() -> Result<()> {
         .with_context(|| format!("could not read file `{:?}`", args.input_file))
         .unwrap();
 
-    let input_data_raw = input_file_data.as_slice();
-    let elf_file = ElfBytes::<AnyEndian>::minimal_parse(input_data_raw).unwrap();
+    let file_bytes = input_file_data.as_slice();
+    let elf_file: ElfBytes<AnyEndian> = ElfBytes::<AnyEndian>::minimal_parse(file_bytes).unwrap();
 
     let mut hasher = Sha256::new();
-    hasher.update(input_data_raw);
+    hasher.update(file_bytes);
     let digest: [u8; 32] = hasher.finalize().into();
 
     let output_file = File::create(&args.output_file)?;
