@@ -613,7 +613,7 @@ fn sign_elf_file(
     Ok(())
 }
 
-// $ cargo run gta-5.prx gta-5.sprx
+// $ cargo run name.prx name.sprx
 fn main() -> Result<()> {
     let args = Cli::parse();
 
@@ -658,12 +658,11 @@ fn main() -> Result<()> {
         .with_context(|| format!("could not read file `{:?}`", args.input_file))
         .unwrap();
 
-    let input_data_raw = input_file_data.as_slice();
-    let elf_file: ElfBytes<AnyEndian> =
-        ElfBytes::<AnyEndian>::minimal_parse(input_data_raw).unwrap();
+    let file_bytes = input_file_data.as_slice();
+    let elf_file: ElfBytes<AnyEndian> = ElfBytes::<AnyEndian>::minimal_parse(file_bytes).unwrap();
 
     let mut hasher = Sha256::new();
-    hasher.update(input_data_raw);
+    hasher.update(file_bytes);
     let digest: [u8; 32] = hasher.finalize().into();
 
     let output_file = File::create(&args.output_file)?;
