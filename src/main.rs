@@ -286,8 +286,6 @@ fn sign_elf_file(
             continue;
         }
 
-        println!("processing segment #{:02}...", index);
-
         let num_blocks = align_up(phdr.p_filesz as i128, BLOCK_SIZE) / BLOCK_SIZE;
         {
             let meta_entry: &mut SignedElfEntry = entries.get_mut(entry_idx).unwrap();
@@ -608,6 +606,8 @@ fn sign_elf_file(
     if !version_data.is_empty() {
         output_file.write_all(version_data)?;
     }
+
+    println!("Signed succefully!");
 
     Ok(())
 }
