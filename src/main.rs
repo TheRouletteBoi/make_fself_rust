@@ -243,7 +243,7 @@ fn sign_elf_file(
         entry_idx += 2;
     }
 
-    let mut num_entries = entries.len();
+    let num_entries = entries.len();
 
     let ex_info = SignedElfExInfo {
         paid,
@@ -313,301 +313,301 @@ fn sign_elf_file(
         }
 
         entry_idx += 2;
+    }
 
-        let mut common_header_pack = vec![];
+    let mut common_header_pack = vec![];
 
-        // COMMON_HEADER_FMT: '<4s4B'
-        // -  4s : A string of length 4 bytes.
-        common_header_pack.write(signed_elf_file::MAGIC).unwrap();
-        // -  4b : Four signed bytes.
-        common_header_pack
-            .write_i8(signed_elf_file::VERSION)
+    // COMMON_HEADER_FMT: '<4s4B'
+    // -  4s : A string of length 4 bytes.
+    common_header_pack.write(signed_elf_file::MAGIC).unwrap();
+    // -  4b : Four signed bytes.
+    common_header_pack
+        .write_i8(signed_elf_file::VERSION)
+        .unwrap();
+    common_header_pack.write_i8(signed_elf_file::MODE).unwrap();
+    common_header_pack
+        .write_i8(signed_elf_file::ENDIAN)
+        .unwrap();
+    common_header_pack
+        .write_i8(signed_elf_file::ATTRIBS)
+        .unwrap();
+
+    output_file.write(&common_header_pack)?;
+
+    let mut extended_header_pack = vec![];
+
+    // EXT_HEADER_FMT: '<I2HQ2H4x'
+    // -  I : Unsigned int (4 bytes)
+    extended_header_pack
+        .write_u32::<LittleEndian>(signed_elf_file::KEY_TYPE)
+        .unwrap();
+    // -  2H : Two unsigned shorts (each 2 bytes)
+    extended_header_pack
+        .write_u16::<LittleEndian>(header_size as u16)
+        .unwrap();
+    // -  Q : Unsigned long long (8 bytes)
+    extended_header_pack
+        .write_u16::<LittleEndian>(meta_size as u16)
+        .unwrap();
+    // -  2H : Two unsigned shorts (each 2 bytes)
+    extended_header_pack
+        .write_u32::<LittleEndian>(offset as u32)
+        .unwrap();
+    // // -  4x : Four pad bytes
+    extended_header_pack.write_u32::<LittleEndian>(0).unwrap();
+    extended_header_pack
+        .write_u16::<LittleEndian>(num_entries as u16)
+        .unwrap();
+    extended_header_pack
+        .write_u16::<LittleEndian>(flags as u16)
+        .unwrap();
+    extended_header_pack.write_u32::<LittleEndian>(0).unwrap();
+
+    output_file.write(&extended_header_pack)?;
+
+    for entry in entries.iter() {
+        let mut entry_pack = vec![];
+
+        // FMT: '<4Q'
+        entry_pack
+            .write_u64::<LittleEndian>(entry.props as u64)
             .unwrap();
-        common_header_pack.write_i8(signed_elf_file::MODE).unwrap();
-        common_header_pack
-            .write_i8(signed_elf_file::ENDIAN)
+        entry_pack
+            .write_u64::<LittleEndian>(entry.offset as u64)
             .unwrap();
-        common_header_pack
-            .write_i8(signed_elf_file::ATTRIBS)
+        entry_pack
+            .write_u64::<LittleEndian>(entry.filesz as u64)
+            .unwrap();
+        entry_pack
+            .write_u64::<LittleEndian>(entry.memsz as u64)
             .unwrap();
 
-        output_file.write(&common_header_pack)?;
+        output_file.write(&entry_pack)?;
+    }
 
-        let mut extended_header_pack = vec![];
+    // ELF SAVE
+    let mut ehdr_pack = vec![];
 
-        // EXT_HEADER_FMT: '<I2HQ2H4x'
-        // -  I : Unsigned int (4 bytes)
-        extended_header_pack
-            .write_u32::<LittleEndian>(signed_elf_file::KEY_TYPE)
-            .unwrap();
-        // -  2H : Two unsigned shorts (each 2 bytes)
-        extended_header_pack
-            .write_u16::<LittleEndian>(header_size as u16)
-            .unwrap();
-        // -  Q : Unsigned long long (8 bytes)
-        extended_header_pack
-            .write_u16::<LittleEndian>(meta_size as u16)
-            .unwrap();
-        // -  2H : Two unsigned shorts (each 2 bytes)
-        extended_header_pack
-            .write_u32::<LittleEndian>(offset as u32)
-            .unwrap();
-        // // -  4x : Four pad bytes
-        extended_header_pack.write_u32::<LittleEndian>(0).unwrap();
-        extended_header_pack
-            .write_u16::<LittleEndian>(num_entries as u16)
-            .unwrap();
-        extended_header_pack
-            .write_u16::<LittleEndian>(flags as u16)
-            .unwrap();
-        extended_header_pack.write_u32::<LittleEndian>(0).unwrap();
+    // FMT = '<4s5B6xB'
+    // -  4s : A string of length 4 bytes.
+    ehdr_pack.write(MAGIC).unwrap();
+    // -  5B : Five unsigned bytes.
+    ehdr_pack.write_u8(MACHINE_CLASS).unwrap();
+    ehdr_pack.write_u8(DATA2LSB).unwrap();
+    ehdr_pack.write_u8(elf_file.ehdr.version as u8).unwrap();
+    ehdr_pack.write_u8(elf_file.ehdr.osabi as u8).unwrap();
+    ehdr_pack.write_u8(elf_file.ehdr.abiversion as u8).unwrap();
+    // -  6x : Six pad bytes.
+    ehdr_pack.write_u48::<LittleEndian>(0).unwrap();
+    // -  B  : Unsigned byte
+    ehdr_pack.write_u8(0).unwrap();
 
-        output_file.write(&extended_header_pack)?;
+    // EX_FMT : '<2HI3QI6H'
+    // -  2H : Two unsigned shorts (each 2 bytes)
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_type)
+        .unwrap();
+    // -  I : Unsigned int (4 bytes)
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_machine)
+        .unwrap();
+    ehdr_pack
+        .write_u32::<LittleEndian>(elf_file.ehdr.version as u32)
+        .unwrap();
+    // -  3Q : Three unsigned long long (each 8 bytes)
+    ehdr_pack
+        .write_u64::<LittleEndian>(elf_file.ehdr.e_entry as u64)
+        .unwrap();
+    ehdr_pack
+        .write_u64::<LittleEndian>(elf_file.ehdr.e_phoff as u64)
+        .unwrap();
+    ehdr_pack
+        .write_u64::<LittleEndian>(elf_file.ehdr.e_shoff as u64)
+        .unwrap();
+    // -  I : Unsigned int (4 bytes)
+    ehdr_pack
+        .write_u32::<LittleEndian>(elf_file.ehdr.e_flags as u32)
+        .unwrap();
+    // -  6H : Six unsigned shorts (each 2 bytes)
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_ehsize as u16)
+        .unwrap();
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_phentsize as u16)
+        .unwrap();
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_phnum as u16)
+        .unwrap();
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_shentsize as u16)
+        .unwrap();
+    // Because of ignore_shdrs = True
+    ehdr_pack.write_u16::<LittleEndian>(0 as u16).unwrap();
+    ehdr_pack
+        .write_u16::<LittleEndian>(elf_file.ehdr.e_shstrndx as u16)
+        .unwrap();
 
-        for entry in entries.iter() {
-            let mut entry_pack = vec![];
+    output_file.write(&ehdr_pack)?;
 
-            // FMT: '<4Q'
-            entry_pack
-                .write_u64::<LittleEndian>(entry.props as u64)
+    if elf_file.ehdr.e_phentsize > 0 && elf_file.ehdr.e_phnum > 0 {
+        for phdr in segments.iter() {
+            let mut phdr_pack = vec![];
+
+            // FMT = '<2I6Q'
+            // -  2I : Two signed integers (each 4 bytes)
+            phdr_pack
+                .write_u32::<LittleEndian>(phdr.p_type as u32)
                 .unwrap();
-            entry_pack
-                .write_u64::<LittleEndian>(entry.offset as u64)
+            phdr_pack
+                .write_u32::<LittleEndian>(phdr.p_flags as u32)
                 .unwrap();
-            entry_pack
-                .write_u64::<LittleEndian>(entry.filesz as u64)
+            // -  6Q : Six unsigned long long integers (each 8 bytes)
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_offset as u64)
                 .unwrap();
-            entry_pack
-                .write_u64::<LittleEndian>(entry.memsz as u64)
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_vaddr as u64)
+                .unwrap();
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_paddr as u64)
+                .unwrap();
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_filesz as u64)
+                .unwrap();
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_memsz as u64)
+                .unwrap();
+            phdr_pack
+                .write_u64::<LittleEndian>(phdr.p_align as u64)
                 .unwrap();
 
-            output_file.write(&entry_pack)?;
+            output_file.write(&phdr_pack)?;
         }
+    }
 
-        // ELF SAVE
-        let mut ehdr_pack = vec![];
+    // ELF EXT INFO
+    let mut elf_ext_info_pack = vec![];
 
-        // FMT = '<4s5B6xB'
-        // -  4s : A string of length 4 bytes.
-        ehdr_pack.write(MAGIC).unwrap();
-        // -  5B : Five unsigned bytes.
-        ehdr_pack.write_u8(MACHINE_CLASS).unwrap();
-        ehdr_pack.write_u8(DATA2LSB).unwrap();
-        ehdr_pack.write_u8(elf_file.ehdr.version as u8).unwrap();
-        ehdr_pack.write_u8(elf_file.ehdr.osabi as u8).unwrap();
-        ehdr_pack.write_u8(elf_file.ehdr.abiversion as u8).unwrap();
-        // -  6x : Six pad bytes.
-        ehdr_pack.write_u48::<LittleEndian>(0).unwrap();
-        // -  B  : Unsigned byte
-        ehdr_pack.write_u8(0).unwrap();
+    // FMT = '<4Q32s'
+    // - 4Q : 4 unsigned long long
+    elf_ext_info_pack
+        .write_u64::<LittleEndian>(paid as u64)
+        .unwrap();
+    elf_ext_info_pack
+        .write_u64::<LittleEndian>(ex_info.ptype as u64)
+        .unwrap();
+    elf_ext_info_pack
+        .write_u64::<LittleEndian>(ex_info.app_version as u64)
+        .unwrap();
+    elf_ext_info_pack
+        .write_u64::<LittleEndian>(ex_info.fw_version as u64)
+        .unwrap();
+    // - 32S : 32 char[]
+    elf_ext_info_pack.write(&ex_info.digest).unwrap();
 
-        // EX_FMT : '<2HI3QI6H'
-        // -  2H : Two unsigned shorts (each 2 bytes)
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_type)
-            .unwrap();
-        // -  I : Unsigned int (4 bytes)
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_machine)
-            .unwrap();
-        ehdr_pack
-            .write_u32::<LittleEndian>(elf_file.ehdr.version as u32)
-            .unwrap();
-        // -  3Q : Three unsigned long long (each 8 bytes)
-        ehdr_pack
-            .write_u64::<LittleEndian>(elf_file.ehdr.e_entry as u64)
-            .unwrap();
-        ehdr_pack
-            .write_u64::<LittleEndian>(elf_file.ehdr.e_phoff as u64)
-            .unwrap();
-        ehdr_pack
-            .write_u64::<LittleEndian>(elf_file.ehdr.e_shoff as u64)
-            .unwrap();
-        // -  I : Unsigned int (4 bytes)
-        ehdr_pack
-            .write_u32::<LittleEndian>(elf_file.ehdr.e_flags as u32)
-            .unwrap();
-        // -  6H : Six unsigned shorts (each 2 bytes)
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_ehsize as u16)
-            .unwrap();
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_phentsize as u16)
-            .unwrap();
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_phnum as u16)
-            .unwrap();
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_shentsize as u16)
-            .unwrap();
-        // Because of ignore_shdrs = True
-        ehdr_pack.write_u16::<LittleEndian>(0 as u16).unwrap();
-        ehdr_pack
-            .write_u16::<LittleEndian>(elf_file.ehdr.e_shstrndx as u16)
+    output_file.write(&elf_ext_info_pack)?;
+
+    if signed_elf_file::HAS_NPDRM > 0 {
+        let mut npdrm_control_block_pack = vec![];
+
+        // FMT = '<H14x19s13s'
+        // -  H : Unsigned short (2 bytes)
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(SELF_CONTROL_BLOCK_TYPE_NPDRM as u16)
             .unwrap();
 
-        output_file.write(&ehdr_pack)?;
-
-        if elf_file.ehdr.e_phentsize > 0 && elf_file.ehdr.e_phnum > 0 {
-            for phdr in segments.iter() {
-                let mut phdr_pack = vec![];
-
-                // FMT = '<2I6Q'
-                // -  2I : Two signed integers (each 4 bytes)
-                phdr_pack
-                    .write_u32::<LittleEndian>(phdr.p_type as u32)
-                    .unwrap();
-                phdr_pack
-                    .write_u32::<LittleEndian>(phdr.p_flags as u32)
-                    .unwrap();
-                // -  6Q : Six unsigned long long integers (each 8 bytes)
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_offset as u64)
-                    .unwrap();
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_vaddr as u64)
-                    .unwrap();
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_paddr as u64)
-                    .unwrap();
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_filesz as u64)
-                    .unwrap();
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_memsz as u64)
-                    .unwrap();
-                phdr_pack
-                    .write_u64::<LittleEndian>(phdr.p_align as u64)
-                    .unwrap();
-
-                output_file.write(&phdr_pack)?;
-            }
-        }
-
-        // ELF EXT INFO
-        let mut elf_ext_info_pack = vec![];
-
-        // FMT = '<4Q32s'
-        // - 4Q : 4 unsigned long long
-        elf_ext_info_pack
-            .write_u64::<LittleEndian>(paid as u64)
+        // -  14x : 14 pad bytes
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
             .unwrap();
-        elf_ext_info_pack
-            .write_u64::<LittleEndian>(ex_info.ptype as u64)
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
             .unwrap();
-        elf_ext_info_pack
-            .write_u64::<LittleEndian>(ex_info.app_version as u64)
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
             .unwrap();
-        elf_ext_info_pack
-            .write_u64::<LittleEndian>(ex_info.fw_version as u64)
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
             .unwrap();
-        // - 32S : 32 char[]
-        elf_ext_info_pack.write(&ex_info.digest).unwrap();
-
-        output_file.write(&elf_ext_info_pack)?;
-
-        if signed_elf_file::HAS_NPDRM > 0 {
-            let mut npdrm_control_block_pack = vec![];
-
-            // FMT = '<H14x19s13s'
-            // -  H : Unsigned short (2 bytes)
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(SELF_CONTROL_BLOCK_TYPE_NPDRM as u16)
-                .unwrap();
-
-            // -  14x : 14 pad bytes
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            npdrm_control_block_pack
-                .write_u16::<LittleEndian>(0)
-                .unwrap();
-            // -  19s : A string of length 19 bytes
-            npdrm_control_block_pack
-                .write(&vec![b'\0'; SELF_NPDRM_CONTROL_BLOCK_CONTENT_ID_SIZE])
-                .unwrap();
-            npdrm_control_block_pack
-                .write(&vec![b'\0'; SELF_NPDRM_CONTROL_BLOCK_RANDOM_PAD_SIZE])
-                .unwrap();
-            // -  13s : A string of length 13 bytes
-
-            output_file.write(&npdrm_control_block_pack)?;
-        }
-
-        // Meta Block
-        for _ in 0..num_entries {
-            let mut meta_block_pack = vec![];
-
-            // FMT = '<80x'
-            meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
-            meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
-            meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
-            meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
-            meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
-
-            output_file.write(&meta_block_pack)?;
-        }
-
-        // Meta Footer
-
-        let mut meta_footer_pack = vec![];
-        // FMT = '<48xI28x'
-        meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
-        meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
-        meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
-        meta_footer_pack
-            .write_u32::<LittleEndian>(0x10000 as u32)
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
             .unwrap();
-        meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
-        meta_footer_pack.write_u48::<LittleEndian>(0).unwrap();
-        meta_footer_pack.write_u48::<LittleEndian>(0).unwrap();
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
+            .unwrap();
+        npdrm_control_block_pack
+            .write_u16::<LittleEndian>(0)
+            .unwrap();
+        // -  19s : A string of length 19 bytes
+        npdrm_control_block_pack
+            .write(&vec![b'\0'; SELF_NPDRM_CONTROL_BLOCK_CONTENT_ID_SIZE])
+            .unwrap();
+        npdrm_control_block_pack
+            .write(&vec![b'\0'; SELF_NPDRM_CONTROL_BLOCK_RANDOM_PAD_SIZE])
+            .unwrap();
+        // -  13s : A string of length 13 bytes
 
-        output_file.write(&meta_footer_pack)?;
+        output_file.write(&npdrm_control_block_pack)?;
+    }
 
-        if auth_info.is_empty() {
-            output_file
-                .write(&vec![b'\0'; SIGNATURE_SIZE as usize])
-                .unwrap();
-        }
+    // Meta Block
+    for _ in 0..num_entries {
+        let mut meta_block_pack = vec![];
 
-        let mut start_offset = 0;
-        for entry in entries.iter() {
-            let mut entry_body_pack = vec![];
+        // FMT = '<80x'
+        meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
+        meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
+        meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
+        meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
+        meta_block_pack.write_u128::<LittleEndian>(0).unwrap();
 
-            entry_body_pack.write_all(&entry.data).unwrap();
+        output_file.write(&meta_block_pack)?;
+    }
 
-            if start_offset == 0 {
-                start_offset = entry.offset as usize + entry.data.len();
-            } else {
-                while start_offset < entry.offset as usize {
-                    entry_body_pack.write_u8(0).unwrap();
-                    start_offset += 1;
-                }
+    // Meta Footer
 
-                start_offset = entry.offset as usize + entry.data.len();
+    let mut meta_footer_pack = vec![];
+    // FMT = '<48xI28x'
+    meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
+    meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
+    meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
+    meta_footer_pack
+        .write_u32::<LittleEndian>(0x10000 as u32)
+        .unwrap();
+    meta_footer_pack.write_u128::<LittleEndian>(0).unwrap();
+    meta_footer_pack.write_u48::<LittleEndian>(0).unwrap();
+    meta_footer_pack.write_u48::<LittleEndian>(0).unwrap();
+
+    output_file.write(&meta_footer_pack)?;
+
+    if auth_info.is_empty() {
+        output_file
+            .write(&vec![b'\0'; SIGNATURE_SIZE as usize])
+            .unwrap();
+    }
+
+    let mut start_offset = 0;
+    for entry in entries.iter() {
+        let mut entry_body_pack = vec![];
+
+        entry_body_pack.write_all(&entry.data).unwrap();
+
+        if start_offset == 0 {
+            start_offset = entry.offset as usize + entry.data.len();
+        } else {
+            while start_offset < entry.offset as usize {
+                entry_body_pack.write_u8(0).unwrap();
+                start_offset += 1;
             }
 
-            output_file.write(&entry_body_pack).unwrap();
+            start_offset = entry.offset as usize + entry.data.len();
         }
 
-        if !version_data.is_empty() {
-            output_file.write_all(version_data)?;
-        }
+        output_file.write(&entry_body_pack).unwrap();
+    }
+
+    if !version_data.is_empty() {
+        output_file.write_all(version_data)?;
     }
 
     Ok(())
