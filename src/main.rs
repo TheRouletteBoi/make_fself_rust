@@ -607,7 +607,7 @@ fn sign_elf_file(
         output_file.write_all(version_data)?;
     }
 
-    println!("Signed successfully!");
+    println!("Signed prx successfully");
 
     Ok(())
 }
