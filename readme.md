@@ -32,6 +32,9 @@ cd "$(SolutionDir)vendor\make_fself\bin\"
 make_fself.exe "$(TargetDir)$(TargetName)$(TargetExt)" "$(TargetDir)$(TargetName).sprx"
 ```
 
+# Download
+[Releases](https://github.com/TheRouletteBoi/make_fself_rust/releases)
+
 
 # Building
 
