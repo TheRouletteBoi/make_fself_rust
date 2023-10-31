@@ -43,4 +43,9 @@ $ cargo build --release
 ```
 
 
+# Contributors
+- flatz for the original make_fself.py script
+- unisquirrel for rust help
+- Illia rust dev
+
 
