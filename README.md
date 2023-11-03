@@ -1,6 +1,6 @@
 # make_fself in rust
 
-make_fself in rust because I didn't want to rely on python as a dependency
+make_fself in rust because I didn't want to rely on python as a dependency. make_fself can be used to take 64-bit ELF files and produce fake Signed ELFs that can be used on the PlayStation 4 (PS4). This includes eboot.bin files and Playstation Relocatable eXecutable (PRX) library files.
 
 # Usage
 
